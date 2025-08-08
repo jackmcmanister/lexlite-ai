@@ -104,5 +104,4 @@ Question: {q}
         usage_bar()
 
 st.markdown("---")
-st.caption("D
-
+st.caption("Demo only. Not legal advice. © LexLite 2025")
