@@ -12,7 +12,7 @@ st.set_page_config(page_title="LexLite AI", page_icon="⚖️", layout="centered
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 FREE_LIMIT = 3  # total AI actions allowed for free
-STRIPE_LINK = "https://buy.stripe.com/your-checkout-link"  # <-- replace with your real Stripe Payment Link
+STRIPE_LINK = "https://buy.stripe.com/test_aFadR9foafiLcul42b4gg00"  # <-- replace with your real Stripe Payment Link
 
 # ---------- STATE ----------
 if "use_count" not in st.session_state:
