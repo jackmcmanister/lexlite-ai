@@ -1,18 +1,18 @@
 # LexLite AI with Free Trial Limit (3 Actions)
-# Requirements: streamlit, openai, PyMuPDF
+# Requirements: streamlit, openai>=1.40.0, PyMuPDF
 # Secrets: set OPENAI_API_KEY in Streamlit Secrets
 # NOTE: Trial limit is session-based. Resets if cookies/session are cleared.
 
 import streamlit as st
 import fitz  # PyMuPDF
-import openai
+from openai import OpenAI
 
 # ---------- CONFIG ----------
 st.set_page_config(page_title="LexLite AI", page_icon="⚖️", layout="centered")
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 FREE_LIMIT = 3  # total AI actions allowed for free
-STRIPE_LINK = "https://buy.stripe.com/test_aFadR9foafiLcul42b4gg00"  # <-- replace with your real Stripe Payment Link
+STRIPE_LINK = "https://buy.stripe.com/test_aFadR9foafiLcul42b4gg00"  # your Stripe test link
 
 # ---------- STATE ----------
 if "use_count" not in st.session_state:
@@ -35,6 +35,19 @@ def can_use_ai():
 def count_use():
     st.session_state.use_count += 1
 
+def chat_complete(prompt: str, temp: float = 0.2) -> str:
+    try:
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",  # or "gpt-4o"
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temp,
+        )
+        return res.choices[0].message.content
+    except Exception as e:
+        st.error("AI request failed. Please try again in a minute.")
+        st.caption(f"Details: {e}")
+        st.stop()
+
 # ---------- UI ----------
 st.title("LexLite AI")
 st.subheader("Your AI-Powered Legal Document Assistant")
@@ -45,9 +58,7 @@ uploaded = st.file_uploader("Upload a legal document (PDF)", type=["pdf"])
 if uploaded is not None and st.session_state.doc_text is None:
     with st.spinner("Extracting text..."):
         doc = fitz.open(stream=uploaded.read(), filetype="pdf")
-        text_chunks = []
-        for page in doc:
-            text_chunks.append(page.get_text())
+        text_chunks = [page.get_text() for page in doc]
         # Limit text to avoid token overload
         st.session_state.doc_text = ("\n".join(text_chunks))[:25000]
     st.success("Document loaded!")
@@ -61,19 +72,16 @@ if st.button("Summarize Document", disabled=st.session_state.doc_text is None):
         with st.spinner("Summarizing with AI..."):
             prompt = f"""
 Summarize this legal document in clear plain English.
-Highlight key sections: parties, scope, term, termination, confidentiality, liability, IP, payment, governing law, and unusual risks.
+Highlight key sections: parties, scope, term, termination, confidentiality, liability,
+IP, payment, governing law, and unusual risks.
 
 Document:
 {st.session_state.doc_text}
 """
-            res = openai.ChatCompletion.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.2,
-            )
+            summary = chat_complete(prompt, temp=0.2)
         count_use()
         st.success("Summary ready.")
-        st.markdown(res.choices[0].message.content)
+        st.markdown(summary)
         usage_bar()
 
 # ---------- Q&A ----------
@@ -93,14 +101,10 @@ Document:
 
 Question: {q}
 """
-            res = openai.ChatCompletion.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.1,
-            )
+            answer = chat_complete(prompt, temp=0.1)
         count_use()
         st.markdown("**Answer:**")
-        st.write(res.choices[0].message.content)
+        st.write(answer)
         usage_bar()
 
 st.markdown("---")
